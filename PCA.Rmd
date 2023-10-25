@@ -1,0 +1,228 @@
+---
+title: "Assignment 1 IDA"
+author: "Lim Xiang Ling 2709194"
+date: "2023-10-23"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load libraries, echo=FALSE, include=FALSE}
+#load libraries needed for plots
+library(ggfortify)
+library(ggplot2)
+library(dplyr)
+
+```
+
+
+**1. Describe mtcars Dataset** 
+
+This dataset includes information about various car models and their performance characteristics. The mtcars dataset is also derived from the 1974 Motor Trend US magazine and comprises 32 observations on 11 variables.
+
+The variables include:
+
+Mpg - The mpg variable represents miles per gallon (mpg) for the car model.
+
+Cyl - The cyl variable represents the number of cylinders in the engine of the car model.
+
+Disp - The disp variable represents the displacement of the car model, which is the volume of air and fuel mixture that the engine can compress and burn in one cycle, in cubic inches.
+
+Hp - The hp variable represents the gross horsepower of the car model.
+
+Drat - The drat variable represents the rear axle ratio of the car model.
+
+Wt - The wt variable represents the weight of the car model, in thousands of pounds.
+
+Qsec - The qsec variable represents the time taken to cover a quarter-mile distance from a standing start.
+
+Vs - The vs variable represents the type of engine (0 = V-shaped, 1 = straight).
+
+Am - The am variable represents the type of transmission (0 = automatic, 1 = manual).
+
+Gear - The gear represents the number of forward gears in the car model.
+
+Carb - The carb variable represents the number of carburettors in the engine of the car model.
+
+Since I am using R for this assignment, the mtcars dataset can be loaded directly by typing data(mtcars). You can also access the dataset by clicking on this link:
+
+https://r-data.pmagunia.com/system/files/datasets/dataset-10551.csv?ref=hackernoon.com
+
+```{r load data}
+data(mtcars)
+
+head(mtcars)
+summary(mtcars)
+```
+
+**Exploratory Data Analysis**
+
+To visualise how the mpg distribution looks like:
+```{r mpg visualisation}
+# boxplot of mpg values
+boxplot(mtcars$mpg,
+        main='Distribution of mpg values',
+        ylab='mpg',
+        col='blue',
+        border='black')
+
+# histogram of mpg distribution
+hist(mtcars$mpg,
+     col='blue',
+     main='Histogram of mpg distribution',
+     xlab='mpg',
+     ylab='Frequency')
+
+```
+
+I will discretise the mpg into:
+
+"Very Low": 1
+
+"Low": 2
+
+"Medium": 3
+
+"High": 4
+
+"Very High":5
+
+Based on the histogram, there are the most cars with mpg of 15-20 miles per gallon (Low), and least number of cars with 25-30 miles per gallon (High).
+From the boxplot, it seems like there are no anomalies as the majority of the data lies within the 2 whiskers.
+
+**2. How I preprocessed the data and why**
+
+First, I check for missing data:
+```{r check missing data}
+which(is.na(mtcars))
+```
+There is no missing data, hence no need for any form of data imputations.
+
+From the original dataset, I will create 2 datasets:
+
+a. dataframe consisting of only column 1: mpg only
+
+b. dataframe consisting of the remaining columns, excluding categorical variables 'am' and 'vs' since PCA only works on numeric variables. 
+
+Then I will proceed to standardise all the variables using Z score standardisation as PCA will perform better when all the features are on the same scale. This is because according to the slides, we are interested in the overall inherent dependency structure of the data, regardless of (arbitrary) measurement
+units/scales in individual dimensions.
+
+```{r data pre-processing}
+mtcars_new <- mtcars[ -c(8,9)]
+
+mtcars_new$discretempg <- cut(as.numeric(unlist(mtcars_new["mpg"])),
+              breaks=c(10,15, 20, 25, 30, 35),
+              labels=c('Very Low', 'Low', 'Medium', 'High', 'Very High'))
+
+# preprocessed data a
+mtcars_mpg_labelled <- mtcars_new[c(10)]
+
+# preprocessed data b
+mtcars_new_pca <- mtcars_new[-c(1)]
+mtcars_new_pca <- mtcars_new_pca[c(1:8)]
+
+# zscore standardisation
+mtcars_new_pca_zscore <- mtcars_new_pca
+mtcars_new_pca_zscore <- dplyr::mutate_at(mtcars_new_pca_zscore, c(1:8), list(Z=scale))
+mtcars_new_pca_zscore <- mtcars_new_pca_zscore[-c(1:8)]
+ 
+
+
+```
+
+**3. What features (coordinates) did you use for labelling the projected points with different markers? What questions on the data did ask/investigate.**
+
+I used the 'mpg' feature for labelling the projected points with different markers.
+
+"Very Low": orange
+
+"Low": yellow
+
+"Medium": green
+
+"High": blue
+
+"Very High": pink
+
+I want to find out how many principle component is needed to capture at least 80% variance of the data.
+
+I also want to find out the characteristics of cars with "Very Low" and "Very High" mpg (eg high 'dist' + high 'wt').
+
+
+**I will answer the next 2 questions together:**
+
+**4. What interesting aspects of the data did you detect based on the data visualisations? 5. What interesting aspects of the data did you detect based on eigenvector and eigenvalue analysis of the data covariance matrix? **
+
+First I will create the data covariance matrix:
+```{r Creation of Covariance matrix}
+
+
+#covariance matrix
+cov(mtcars_new_pca_zscore)
+
+
+```
+Then I will perform eigendecomposition as the eigenvectors represent the principal components of the covariance matrix and the eigenvalues is the magnitude of the eigenvectors. The eigenvector that has the largest value is the feature with maximum variance. 
+
+```{r eigendecomposition}
+eigen(cov(mtcars_new_pca_zscore))
+```
+Next I will calculate and plot the results of the PCA:
+```{r PCA plot}
+#z score normalisation applied here where scale = true 
+pca_res <- prcomp(mtcars_new_pca,data = mtcars_new, scale. = TRUE, center = TRUE)
+head(pca_res)
+summary(pca_res)
+
+autoplot(pca_res, data = mtcars_new, colour = 'discretempg', label.size = 3)
+
+```
+
+Observations:
+
+The first principle component (PC1) has high values for 'cyl', 'dist' and 'hp', which indicates that this principle component describes the most variation in these variables.
+
+The second principle compoenent (PC2) has high values for 'carb' and 'qsec'. This indicates that this principle component describes the most variation in these variables. 
+
+Next I will plot the PCA with eigenvectors: 
+```{r}
+#plot with no labelling of eigenvectors
+autoplot(pca_res, data = mtcars_new, colour = 'discretempg',loadings = TRUE)
+
+#plot with labelling of eigenvectors
+autoplot(pca_res, data = mtcars_new, colour = 'discretempg',
+         loadings = TRUE, loadings.colour = 'blue',
+         loadings.label = TRUE, loadings.label.size = 3)
+```
+
+Observations:
+
+From the plot, we can tell that cars that are from the same category of mpg are closely clustered together. For example, cars with "Very High" mpg tend to have high 'qsec', 'drat' and 'gear'. Cars with "Very low" tend to have higer 'wt', 'disp', 'cyl' and 'hp'.
+
+Arrows that are close together indicates high correlation (eg 'wt' and 'disp' are highly correlated).
+
+Next I will plot the cumulative sum of the eigenvalues to determine how many principle components to select for dimensionality reduction:
+```{r cumulative sum of the eigenvalues}
+#compute standard deviation of each principal component
+ std_dev <- pca_res$sdev
+
+#compute variance
+ pr_var <- std_dev^2
+ 
+ #proportion of variance explained
+prop_varex <- pr_var/sum(pr_var)
+plot(prop_varex, xlab = "Principal Component",
+
+             ylab = "Proportion of Variance Explained",
+
+             type = "b")
+plot(cumsum(prop_varex), xlab = "Principal Component", ylab = "Cumulative Proportion of Variance Explained",type = "b")
+```
+
+From the plot, over 85% of the variance is captured within the 2 largest principle components. 
+
+
