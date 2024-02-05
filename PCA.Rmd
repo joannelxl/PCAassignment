@@ -22,7 +22,7 @@ library(dplyr)
 
 **1. Describe mtcars Dataset** 
 
-This dataset includes information about various car models and their performance characteristics. The mtcars dataset is also derived from the 1974 Motor Trend US magazine and comprises 32 observations on 11 variables.
+This dataset includes information about various car models and their performance characteristics. This dataset is also derived from the 1974 Motor Trend US magazine and comprises 32 observations on 11 variables.
 
 The variables include:
 
